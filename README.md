@@ -32,5 +32,7 @@ const NOAH_ARK = {
 ></ajb-timeline>
 ```
 
+![Screenshot of working genealogy tracker](https://github.com/ajbertra91/geneology-tracker/blob/master/Screenshot.png "Screenshot of working genealogy tracker timeline component")
+
 ## Outstanding Issue
 Right now the elements that you add to the timeline are including in the flexbox calculation and evenly distrubuted with the other timeline intervals.
