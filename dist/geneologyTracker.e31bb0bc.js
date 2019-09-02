@@ -117,100 +117,7 @@ parcelRequire = (function (modules, cache, entry, globalName) {
   }
 
   return newRequire;
-})({"src/wc-hooks/hooks-core.js":[function(require,module,exports) {
-"use strict";
-
-Object.defineProperty(exports, "__esModule", {
-  value: true
-});
-exports.registerHook = exports.getElementUpdateFn = exports.getCurrentElement = exports.renderWithHooks = void 0;
-var hooksState;
-
-function getStack() {
-  var stack = new Error().stack;
-
-  if (stack) {
-    return stack;
-  } // if stack wasn't attached to error object, then this is IE and we need to throw to get it
-
-
-  try {
-    throw new Error();
-  } catch (err) {
-    return err.stack;
-  }
-}
-
-var hooksNS = {
-  // Defining unique function name as a property on an object to avoid it being renamed
-  // by bundlers.
-  // TODO: consider generating a unique function name at runtime
-  _renderWithHooks: function _renderWithHooks(renderFn) {
-    return renderFn();
-  }
-};
-
-var onStartOfElementRender = function onStartOfElementRender(element, elementUpdateFn) {
-  hooksState = {
-    currentElement: element,
-    renderIsInProgress: true,
-    hookExecutedThisRenderByStackTrace: {},
-    elementUpdateFn: elementUpdateFn
-  };
-};
-
-var onEndOfElementRender = function onEndOfElementRender() {
-  hooksState = {
-    currentElement: null,
-    renderIsInProgress: false,
-    hookExecutedThisRenderByStackTrace: {},
-    elementUpdateFn: null
-  };
-};
-
-var renderWithHooks = function renderWithHooks(element, renderFn, elementUpdateFn) {
-  onStartOfElementRender(element, elementUpdateFn);
-
-  var renderResult = hooksNS._renderWithHooks(renderFn);
-
-  onEndOfElementRender();
-  return renderResult;
-};
-
-exports.renderWithHooks = renderWithHooks;
-
-var getCurrentElement = function getCurrentElement() {
-  return hooksState.currentElement;
-};
-
-exports.getCurrentElement = getCurrentElement;
-
-var getElementUpdateFn = function getElementUpdateFn() {
-  return hooksState.elementUpdateFn;
-};
-
-exports.getElementUpdateFn = getElementUpdateFn;
-
-var registerHook = function registerHook(name) {
-  if (!hooksState.renderIsInProgress) {
-    throw new Error("Hooks must be called from within an element's render() method. ".concat(name, " was not."));
-  }
-
-  var stack = getStack();
-  var stackTraceId = stack.substring(0, stack.indexOf("_renderWithHooks")); // stackTraceId will unique unless called within a loop
-  // throw an error if that is the case
-
-  if (!hooksState.hookExecutedThisRenderByStackTrace[stackTraceId]) {
-    hooksState.hookExecutedThisRenderByStackTrace[stackTraceId] = true;
-  } else {
-    throw new Error("The ".concat(name, " hook appears to be called within a loop.  Hooks within loops is not supported."));
-  }
-
-  return [hooksState.currentElement, stackTraceId];
-};
-
-exports.registerHook = registerHook;
-},{}],"node_modules/lit-html/lib/directive.js":[function(require,module,exports) {
+})({"node_modules/lit-html/lib/directive.js":[function(require,module,exports) {
 "use strict";
 
 Object.defineProperty(exports, "__esModule", {
@@ -1959,7 +1866,873 @@ exports.html = html;
 const svg = (strings, ...values) => new _templateResult.SVGTemplateResult(strings, values, 'svg', _defaultTemplateProcessor.defaultTemplateProcessor);
 
 exports.svg = svg;
-},{"./lib/default-template-processor.js":"node_modules/lit-html/lib/default-template-processor.js","./lib/template-result.js":"node_modules/lit-html/lib/template-result.js","./lib/directive.js":"node_modules/lit-html/lib/directive.js","./lib/dom.js":"node_modules/lit-html/lib/dom.js","./lib/part.js":"node_modules/lit-html/lib/part.js","./lib/parts.js":"node_modules/lit-html/lib/parts.js","./lib/render.js":"node_modules/lit-html/lib/render.js","./lib/template-factory.js":"node_modules/lit-html/lib/template-factory.js","./lib/template-instance.js":"node_modules/lit-html/lib/template-instance.js","./lib/template.js":"node_modules/lit-html/lib/template.js"}],"src/naive-element.js":[function(require,module,exports) {
+},{"./lib/default-template-processor.js":"node_modules/lit-html/lib/default-template-processor.js","./lib/template-result.js":"node_modules/lit-html/lib/template-result.js","./lib/directive.js":"node_modules/lit-html/lib/directive.js","./lib/dom.js":"node_modules/lit-html/lib/dom.js","./lib/part.js":"node_modules/lit-html/lib/part.js","./lib/parts.js":"node_modules/lit-html/lib/parts.js","./lib/render.js":"node_modules/lit-html/lib/render.js","./lib/template-factory.js":"node_modules/lit-html/lib/template-factory.js","./lib/template-instance.js":"node_modules/lit-html/lib/template-instance.js","./lib/template.js":"node_modules/lit-html/lib/template.js"}],"node_modules/haunted/lib/symbols.js":[function(require,module,exports) {
+"use strict";
+
+Object.defineProperty(exports, "__esModule", {
+  value: true
+});
+exports.contextEvent = exports.contextSymbol = exports.effectsSymbol = exports.commitSymbol = exports.updateSymbol = exports.hookSymbol = exports.phaseSymbol = void 0;
+const symbolFor = typeof Symbol === 'function' ? Symbol.for : str => str;
+const phaseSymbol = symbolFor('haunted.phase');
+exports.phaseSymbol = phaseSymbol;
+const hookSymbol = symbolFor('haunted.hook');
+exports.hookSymbol = hookSymbol;
+const updateSymbol = symbolFor('haunted.update');
+exports.updateSymbol = updateSymbol;
+const commitSymbol = symbolFor('haunted.commit');
+exports.commitSymbol = commitSymbol;
+const effectsSymbol = symbolFor('haunted.effects');
+exports.effectsSymbol = effectsSymbol;
+const contextSymbol = symbolFor('haunted.context');
+exports.contextSymbol = contextSymbol;
+const contextEvent = 'haunted.context';
+exports.contextEvent = contextEvent;
+},{}],"node_modules/haunted/lib/interface.js":[function(require,module,exports) {
+"use strict";
+
+Object.defineProperty(exports, "__esModule", {
+  value: true
+});
+exports.clear = clear;
+exports.setCurrent = setCurrent;
+exports.notify = notify;
+exports.current = void 0;
+let current;
+exports.current = current;
+let currentId = 0;
+
+function setCurrent(element) {
+  exports.current = current = element;
+}
+
+function clear() {
+  exports.current = current = null;
+  currentId = 0;
+}
+
+function notify() {
+  let id = currentId;
+  currentId++;
+  return id;
+}
+},{}],"node_modules/haunted/lib/container.js":[function(require,module,exports) {
+"use strict";
+
+Object.defineProperty(exports, "__esModule", {
+  value: true
+});
+exports.makeContainer = makeContainer;
+
+var _symbols = require("./symbols.js");
+
+var _interface = require("./interface.js");
+
+//import { render, html } from './lit.js';
+const defer = Promise.resolve().then.bind(Promise.resolve());
+
+function scheduler() {
+  let tasks = [];
+  let id;
+
+  function runTasks() {
+    id = null;
+    let t = tasks;
+    tasks = [];
+
+    for (var i = 0, len = t.length; i < len; i++) {
+      t[i]();
+    }
+  }
+
+  return function (task) {
+    tasks.push(task);
+
+    if (id == null) {
+      id = defer(runTasks);
+    }
+  };
+}
+
+function makeContainer(render) {
+  const read = scheduler();
+  const write = scheduler();
+
+  class Container {
+    constructor(renderer, frag, host) {
+      this.renderer = renderer;
+      this.frag = frag;
+      this.host = host || frag;
+      this[_symbols.hookSymbol] = new Map();
+      this[_symbols.phaseSymbol] = null;
+      this._updateQueued = false;
+    }
+
+    update() {
+      if (this._updateQueued) return;
+      read(() => {
+        let result = this.handlePhase(_symbols.updateSymbol);
+        write(() => {
+          this.handlePhase(_symbols.commitSymbol, result);
+
+          if (this[_symbols.effectsSymbol]) {
+            write(() => {
+              this.handlePhase(_symbols.effectsSymbol);
+            });
+          }
+        });
+        this._updateQueued = false;
+      });
+      this._updateQueued = true;
+    }
+
+    handlePhase(phase, arg) {
+      this[_symbols.phaseSymbol] = phase;
+
+      switch (phase) {
+        case _symbols.commitSymbol:
+          return this.commit(arg);
+
+        case _symbols.updateSymbol:
+          return this.render();
+
+        case _symbols.effectsSymbol:
+          return this.runEffects(_symbols.effectsSymbol);
+      }
+
+      this[_symbols.phaseSymbol] = null;
+    }
+
+    commit(result) {
+      render(result, this.frag);
+      this.runEffects(_symbols.commitSymbol);
+    }
+
+    render() {
+      (0, _interface.setCurrent)(this);
+      let result = this.args ? this.renderer.apply(this.host, this.args) : this.renderer.call(this.host, this.host);
+      (0, _interface.clear)();
+      return result;
+    }
+
+    runEffects(symbol) {
+      let effects = this[symbol];
+
+      if (effects) {
+        (0, _interface.setCurrent)(this);
+
+        for (let effect of effects) {
+          effect.call(this);
+        }
+
+        (0, _interface.clear)();
+      }
+    }
+
+    teardown() {
+      let hooks = this[_symbols.hookSymbol];
+      hooks.forEach(hook => {
+        if (typeof hook.teardown === 'function') {
+          hook.teardown();
+        }
+      });
+    }
+
+  }
+
+  return Container;
+}
+},{"./symbols.js":"node_modules/haunted/lib/symbols.js","./interface.js":"node_modules/haunted/lib/interface.js"}],"node_modules/haunted/lib/component.js":[function(require,module,exports) {
+"use strict";
+
+Object.defineProperty(exports, "__esModule", {
+  value: true
+});
+exports.makeComponent = makeComponent;
+
+function toCamelCase(val = '') {
+  return val.indexOf('-') === -1 ? val.toLowerCase() : val.toLowerCase().split('-').reduce((out, part) => {
+    return out ? out + part.charAt(0).toUpperCase() + part.slice(1) : part;
+  }, '');
+}
+
+function makeComponent(Container) {
+  function component(renderer, baseElementOrOptions, options) {
+    const BaseElement = (options || baseElementOrOptions || {}).baseElement || HTMLElement;
+    const {
+      observedAttributes = [],
+      useShadowDOM = true,
+      shadowRootInit = {}
+    } = options || baseElementOrOptions || {};
+
+    class Element extends BaseElement {
+      static get observedAttributes() {
+        return renderer.observedAttributes || observedAttributes || [];
+      }
+
+      constructor() {
+        super();
+
+        if (useShadowDOM === false) {
+          this._container = new Container(renderer, this);
+        } else {
+          this.attachShadow({
+            mode: "open",
+            ...shadowRootInit
+          });
+          this._container = new Container(renderer, this.shadowRoot, this);
+        }
+      }
+
+      connectedCallback() {
+        this._container.update();
+      }
+
+      disconnectedCallback() {
+        this._container.teardown();
+      }
+
+      attributeChangedCallback(name, _, newValue) {
+        let val = newValue === '' ? true : newValue;
+        Reflect.set(this, toCamelCase(name), val);
+      }
+
+    }
+
+    ;
+
+    function reflectiveProp(initialValue) {
+      let value = initialValue;
+      return Object.freeze({
+        enumerable: true,
+        configurable: true,
+
+        get() {
+          return value;
+        },
+
+        set(newValue) {
+          value = newValue;
+
+          this._container.update();
+        }
+
+      });
+    }
+
+    const proto = new Proxy(BaseElement.prototype, {
+      set(target, key, value, receiver) {
+        if (key in target) {
+          Reflect.set(target, key, value);
+        }
+
+        let desc;
+
+        if (typeof key === 'symbol' || key[0] === '_') {
+          desc = {
+            enumerable: true,
+            configurable: true,
+            writable: true,
+            value
+          };
+        } else {
+          desc = reflectiveProp(value);
+        }
+
+        Object.defineProperty(receiver, key, desc);
+
+        if (desc.set) {
+          desc.set.call(receiver, value);
+        }
+
+        return true;
+      }
+
+    });
+    Object.setPrototypeOf(Element.prototype, proto);
+    return Element;
+  }
+
+  return component;
+}
+},{}],"node_modules/haunted/lib/hook.js":[function(require,module,exports) {
+"use strict";
+
+Object.defineProperty(exports, "__esModule", {
+  value: true
+});
+exports.hook = hook;
+exports.Hook = void 0;
+
+var _interface = require("./interface.js");
+
+var _symbols = require("./symbols.js");
+
+class Hook {
+  constructor(id, el) {
+    this.id = id;
+    this.el = el;
+  }
+
+}
+
+exports.Hook = Hook;
+
+function use(Hook, ...args) {
+  let id = (0, _interface.notify)();
+  let hooks = _interface.current[_symbols.hookSymbol];
+  let hook = hooks.get(id);
+
+  if (!hook) {
+    hook = new Hook(id, _interface.current, ...args);
+    hooks.set(id, hook);
+  }
+
+  return hook.update(...args);
+}
+
+function hook(Hook) {
+  return use.bind(null, Hook);
+}
+},{"./interface.js":"node_modules/haunted/lib/interface.js","./symbols.js":"node_modules/haunted/lib/symbols.js"}],"node_modules/haunted/lib/use-effect.js":[function(require,module,exports) {
+"use strict";
+
+Object.defineProperty(exports, "__esModule", {
+  value: true
+});
+exports.setEffects = setEffects;
+exports.useEffect = void 0;
+
+var _symbols = require("./symbols.js");
+
+var _hook = require("./hook.js");
+
+function setEffects(el, cb) {
+  if (!(_symbols.effectsSymbol in el)) {
+    el[_symbols.effectsSymbol] = [];
+  }
+
+  el[_symbols.effectsSymbol].push(cb);
+}
+
+const useEffect = (0, _hook.hook)(class extends _hook.Hook {
+  constructor(id, el) {
+    super(id, el);
+    this.values = false;
+    setEffects(el, this);
+  }
+
+  update(callback, values) {
+    this.callback = callback;
+    this.lastValues = this.values;
+    this.values = values;
+  }
+
+  call() {
+    if (this.values) {
+      if (this.hasChanged()) {
+        this.run();
+      }
+    } else {
+      this.run();
+    }
+  }
+
+  run() {
+    this.teardown();
+    this._teardown = this.callback.call(this.el);
+  }
+
+  teardown() {
+    if (this._teardown) {
+      this._teardown();
+    }
+  }
+
+  hasChanged() {
+    return this.lastValues === false || this.values.some((value, i) => this.lastValues[i] !== value);
+  }
+
+});
+exports.useEffect = useEffect;
+},{"./symbols.js":"node_modules/haunted/lib/symbols.js","./hook.js":"node_modules/haunted/lib/hook.js"}],"node_modules/haunted/lib/use-context.js":[function(require,module,exports) {
+"use strict";
+
+Object.defineProperty(exports, "__esModule", {
+  value: true
+});
+exports.useContext = void 0;
+
+var _symbols = require("./symbols.js");
+
+var _hook = require("./hook.js");
+
+var _useEffect = require("./use-effect.js");
+
+function setContexts(el, consumer) {
+  if (!(_symbols.contextSymbol in el)) {
+    el[_symbols.contextSymbol] = [];
+  }
+
+  el[_symbols.contextSymbol].push(consumer);
+}
+
+const useContext = (0, _hook.hook)(class extends _hook.Hook {
+  constructor(id, el) {
+    super(id, el);
+    setContexts(el, this);
+    this._updater = this._updater.bind(this);
+    this._ranEffect = false;
+    this._unsubscribe = null;
+    (0, _useEffect.setEffects)(el, this);
+  }
+
+  update(Context) {
+    if (this.el.virtual) {
+      throw new Error('can\'t be used with virtual components');
+    }
+
+    if (this.Context !== Context) {
+      this._subscribe(Context);
+
+      this.Context = Context;
+    }
+
+    return this.value;
+  }
+
+  call() {
+    if (!this._ranEffect) {
+      this._ranEffect = true;
+      if (this._unsubscribe) this._unsubscribe();
+
+      this._subscribe(this.Context);
+
+      this.el.update();
+    }
+  }
+
+  _updater(value) {
+    this.value = value;
+    this.el.update();
+  }
+
+  _subscribe(Context) {
+    const detail = {
+      Context,
+      callback: this._updater
+    };
+    this.el.host.dispatchEvent(new CustomEvent(_symbols.contextEvent, {
+      detail,
+      // carrier
+      bubbles: true,
+      // to bubble up in tree
+      cancelable: true,
+      // to be able to cancel
+      composed: true // to pass ShadowDOM boundaries
+
+    }));
+    const {
+      unsubscribe,
+      value
+    } = detail;
+    this.value = unsubscribe ? value : Context.defaultValue;
+    this._unsubscribe = unsubscribe;
+  }
+
+  teardown() {
+    if (this._unsubscribe) {
+      this._unsubscribe();
+    }
+  }
+
+});
+exports.useContext = useContext;
+},{"./symbols.js":"node_modules/haunted/lib/symbols.js","./hook.js":"node_modules/haunted/lib/hook.js","./use-effect.js":"node_modules/haunted/lib/use-effect.js"}],"node_modules/haunted/lib/create-context.js":[function(require,module,exports) {
+"use strict";
+
+Object.defineProperty(exports, "__esModule", {
+  value: true
+});
+exports.makeContext = makeContext;
+
+var _symbols = require("./symbols.js");
+
+var _useContext = require("./use-context.js");
+
+function makeContext(component) {
+  return defaultValue => {
+    const Context = {
+      Provider: class extends HTMLElement {
+        constructor() {
+          super();
+          this.listeners = new Set();
+          this.addEventListener(_symbols.contextEvent, this);
+        }
+
+        disconnectedCallback() {
+          this.removeEventListener(_symbols.contextEvent, this);
+        }
+
+        handleEvent(event) {
+          const {
+            detail
+          } = event;
+
+          if (detail.Context === Context) {
+            detail.value = this.value;
+            detail.unsubscribe = this.unsubscribe.bind(this, detail.callback);
+            this.listeners.add(detail.callback);
+            event.stopPropagation();
+          }
+        }
+
+        unsubscribe(callback) {
+          if (this.listeners.has(callback)) {
+            this.listeners.delete(callback);
+          }
+        }
+
+        set value(value) {
+          this._value = value;
+
+          for (let callback of this.listeners) {
+            callback(value);
+          }
+        }
+
+        get value() {
+          return this._value;
+        }
+
+      },
+      Consumer: component(function ({
+        render
+      }) {
+        const context = (0, _useContext.useContext)(Context);
+        return render(context);
+      }),
+      defaultValue
+    };
+    return Context;
+  };
+}
+},{"./symbols.js":"node_modules/haunted/lib/symbols.js","./use-context.js":"node_modules/haunted/lib/use-context.js"}],"node_modules/haunted/lib/use-memo.js":[function(require,module,exports) {
+"use strict";
+
+Object.defineProperty(exports, "__esModule", {
+  value: true
+});
+exports.useMemo = void 0;
+
+var _hook = require("./hook.js");
+
+const useMemo = (0, _hook.hook)(class extends _hook.Hook {
+  constructor(id, el, fn, values) {
+    super(id, el);
+    this.value = fn();
+    this.values = values;
+  }
+
+  update(fn, values) {
+    if (this.hasChanged(values)) {
+      this.values = values;
+      this.value = fn();
+    }
+
+    return this.value;
+  }
+
+  hasChanged(values) {
+    return values.some((value, i) => this.values[i] !== value);
+  }
+
+});
+exports.useMemo = useMemo;
+},{"./hook.js":"node_modules/haunted/lib/hook.js"}],"node_modules/haunted/lib/use-callback.js":[function(require,module,exports) {
+"use strict";
+
+Object.defineProperty(exports, "__esModule", {
+  value: true
+});
+exports.useCallback = void 0;
+
+var _useMemo = require("./use-memo.js");
+
+const useCallback = (fn, inputs) => (0, _useMemo.useMemo)(() => fn, inputs);
+
+exports.useCallback = useCallback;
+},{"./use-memo.js":"node_modules/haunted/lib/use-memo.js"}],"node_modules/haunted/lib/use-state.js":[function(require,module,exports) {
+"use strict";
+
+Object.defineProperty(exports, "__esModule", {
+  value: true
+});
+exports.useState = void 0;
+
+var _hook = require("./hook.js");
+
+const useState = (0, _hook.hook)(class extends _hook.Hook {
+  constructor(id, el, initialValue) {
+    super(id, el);
+    this.updater = this.updater.bind(this);
+
+    if (typeof initialValue === 'function') {
+      initialValue = initialValue();
+    }
+
+    this.makeArgs(initialValue);
+  }
+
+  update() {
+    return this.args;
+  }
+
+  updater(value) {
+    if (typeof value === "function") {
+      const updaterFn = value;
+      const [previousValue] = this.args;
+      value = updaterFn(previousValue);
+    }
+
+    this.makeArgs(value);
+    this.el.update();
+  }
+
+  makeArgs(value) {
+    this.args = Object.freeze([value, this.updater]);
+  }
+
+});
+exports.useState = useState;
+},{"./hook.js":"node_modules/haunted/lib/hook.js"}],"node_modules/haunted/lib/use-reducer.js":[function(require,module,exports) {
+"use strict";
+
+Object.defineProperty(exports, "__esModule", {
+  value: true
+});
+exports.useReducer = void 0;
+
+var _hook = require("./hook.js");
+
+const useReducer = (0, _hook.hook)(class extends _hook.Hook {
+  constructor(id, el, _, initialState) {
+    super(id, el);
+    this.dispatch = this.dispatch.bind(this);
+    this.state = initialState;
+  }
+
+  update(reducer) {
+    this.reducer = reducer;
+    return [this.state, this.dispatch];
+  }
+
+  dispatch(action) {
+    this.state = this.reducer(this.state, action);
+    this.el.update();
+  }
+
+});
+exports.useReducer = useReducer;
+},{"./hook.js":"node_modules/haunted/lib/hook.js"}],"node_modules/haunted/lib/use-ref.js":[function(require,module,exports) {
+"use strict";
+
+Object.defineProperty(exports, "__esModule", {
+  value: true
+});
+exports.useRef = void 0;
+
+var _useMemo = require("./use-memo.js");
+
+const useRef = initialValue => {
+  return (0, _useMemo.useMemo)(() => {
+    return {
+      current: initialValue
+    };
+  }, []);
+};
+
+exports.useRef = useRef;
+},{"./use-memo.js":"node_modules/haunted/lib/use-memo.js"}],"node_modules/haunted/lib/core.js":[function(require,module,exports) {
+"use strict";
+
+Object.defineProperty(exports, "__esModule", {
+  value: true
+});
+exports.default = haunted;
+Object.defineProperty(exports, "useCallback", {
+  enumerable: true,
+  get: function () {
+    return _useCallback.useCallback;
+  }
+});
+Object.defineProperty(exports, "useEffect", {
+  enumerable: true,
+  get: function () {
+    return _useEffect.useEffect;
+  }
+});
+Object.defineProperty(exports, "useState", {
+  enumerable: true,
+  get: function () {
+    return _useState.useState;
+  }
+});
+Object.defineProperty(exports, "useReducer", {
+  enumerable: true,
+  get: function () {
+    return _useReducer.useReducer;
+  }
+});
+Object.defineProperty(exports, "useMemo", {
+  enumerable: true,
+  get: function () {
+    return _useMemo.useMemo;
+  }
+});
+Object.defineProperty(exports, "useContext", {
+  enumerable: true,
+  get: function () {
+    return _useContext.useContext;
+  }
+});
+Object.defineProperty(exports, "useRef", {
+  enumerable: true,
+  get: function () {
+    return _useRef.useRef;
+  }
+});
+Object.defineProperty(exports, "hook", {
+  enumerable: true,
+  get: function () {
+    return _hook.hook;
+  }
+});
+Object.defineProperty(exports, "Hook", {
+  enumerable: true,
+  get: function () {
+    return _hook.Hook;
+  }
+});
+
+var _container = require("./container.js");
+
+var _component = require("./component.js");
+
+var _createContext = require("./create-context.js");
+
+var _useCallback = require("./use-callback.js");
+
+var _useEffect = require("./use-effect.js");
+
+var _useState = require("./use-state.js");
+
+var _useReducer = require("./use-reducer.js");
+
+var _useMemo = require("./use-memo.js");
+
+var _useContext = require("./use-context.js");
+
+var _useRef = require("./use-ref.js");
+
+var _hook = require("./hook.js");
+
+function haunted({
+  render
+}) {
+  const Container = (0, _container.makeContainer)(render);
+  const component = (0, _component.makeComponent)(Container);
+  const createContext = (0, _createContext.makeContext)(component);
+  return {
+    Container,
+    component,
+    createContext
+  };
+}
+},{"./container.js":"node_modules/haunted/lib/container.js","./component.js":"node_modules/haunted/lib/component.js","./create-context.js":"node_modules/haunted/lib/create-context.js","./use-callback.js":"node_modules/haunted/lib/use-callback.js","./use-effect.js":"node_modules/haunted/lib/use-effect.js","./use-state.js":"node_modules/haunted/lib/use-state.js","./use-reducer.js":"node_modules/haunted/lib/use-reducer.js","./use-memo.js":"node_modules/haunted/lib/use-memo.js","./use-context.js":"node_modules/haunted/lib/use-context.js","./use-ref.js":"node_modules/haunted/lib/use-ref.js","./hook.js":"node_modules/haunted/lib/hook.js"}],"node_modules/haunted/lib/virtual.js":[function(require,module,exports) {
+"use strict";
+
+Object.defineProperty(exports, "__esModule", {
+  value: true
+});
+exports.makeVirtual = makeVirtual;
+
+var _litHtml = require("lit-html");
+
+const includes = Array.prototype.includes;
+
+function makeVirtual(Container) {
+  const partToContainer = new WeakMap();
+  const containerToPart = new WeakMap();
+
+  class DirectiveContainer extends Container {
+    constructor(renderer, part) {
+      super(renderer, part);
+      this.virtual = true;
+    }
+
+    commit(result) {
+      this.host.setValue(result);
+      this.host.commit();
+    }
+
+    teardown() {
+      super.teardown();
+      let part = containerToPart.get(this);
+      partToContainer.delete(part);
+    }
+
+  }
+
+  function virtual(renderer) {
+    function factory(...args) {
+      return part => {
+        let cont = partToContainer.get(part);
+
+        if (!cont) {
+          cont = new DirectiveContainer(renderer, part);
+          partToContainer.set(part, cont);
+          containerToPart.set(cont, part);
+          teardownOnRemove(cont, part);
+        }
+
+        cont.args = args;
+        cont.update();
+      };
+    }
+
+    return (0, _litHtml.directive)(factory);
+  }
+
+  return virtual;
+}
+
+function teardownOnRemove(cont, part, node = part.startNode) {
+  let frag = node.parentNode;
+  let mo = new MutationObserver(mutations => {
+    for (let mutation of mutations) {
+      if (includes.call(mutation.removedNodes, node)) {
+        mo.disconnect();
+
+        if (node.parentNode instanceof ShadowRoot) {
+          teardownOnRemove(cont, part);
+        } else {
+          cont.teardown();
+        }
+
+        break;
+      } else if (includes.call(mutation.addedNodes, node.nextSibling)) {
+        mo.disconnect();
+        teardownOnRemove(cont, part, node.nextSibling);
+        break;
+      }
+    }
+  });
+  mo.observe(frag, {
+    childList: true
+  });
+}
+},{"lit-html":"node_modules/lit-html/lit-html.js"}],"node_modules/haunted/lib/lit-haunted.js":[function(require,module,exports) {
 "use strict";
 
 Object.defineProperty(exports, "__esModule", {
@@ -1971,78 +2744,118 @@ Object.defineProperty(exports, "html", {
     return _litHtml.html;
   }
 });
-exports.element = void 0;
-
-var _hooksCore = require("./wc-hooks/hooks-core");
+Object.defineProperty(exports, "render", {
+  enumerable: true,
+  get: function () {
+    return _litHtml.render;
+  }
+});
+exports.virtual = exports.createContext = exports.component = void 0;
 
 var _litHtml = require("lit-html");
 
-function _typeof(obj) { if (typeof Symbol === "function" && typeof Symbol.iterator === "symbol") { _typeof = function _typeof(obj) { return typeof obj; }; } else { _typeof = function _typeof(obj) { return obj && typeof Symbol === "function" && obj.constructor === Symbol && obj !== Symbol.prototype ? "symbol" : typeof obj; }; } return _typeof(obj); }
+var _core = _interopRequireDefault(require("./core.js"));
 
-function _classCallCheck(instance, Constructor) { if (!(instance instanceof Constructor)) { throw new TypeError("Cannot call a class as a function"); } }
+var _virtual = require("./virtual.js");
 
-function _defineProperties(target, props) { for (var i = 0; i < props.length; i++) { var descriptor = props[i]; descriptor.enumerable = descriptor.enumerable || false; descriptor.configurable = true; if ("value" in descriptor) descriptor.writable = true; Object.defineProperty(target, descriptor.key, descriptor); } }
+function _interopRequireDefault(obj) { return obj && obj.__esModule ? obj : { default: obj }; }
 
-function _createClass(Constructor, protoProps, staticProps) { if (protoProps) _defineProperties(Constructor.prototype, protoProps); if (staticProps) _defineProperties(Constructor, staticProps); return Constructor; }
+const {
+  Container,
+  component,
+  createContext
+} = (0, _core.default)({
+  render(what, where) {
+    (0, _litHtml.render)(what, where);
+  }
 
-function _possibleConstructorReturn(self, call) { if (call && (_typeof(call) === "object" || typeof call === "function")) { return call; } return _assertThisInitialized(self); }
-
-function _assertThisInitialized(self) { if (self === void 0) { throw new ReferenceError("this hasn't been initialised - super() hasn't been called"); } return self; }
-
-function _inherits(subClass, superClass) { if (typeof superClass !== "function" && superClass !== null) { throw new TypeError("Super expression must either be null or a function"); } subClass.prototype = Object.create(superClass && superClass.prototype, { constructor: { value: subClass, writable: true, configurable: true } }); if (superClass) _setPrototypeOf(subClass, superClass); }
-
-function _wrapNativeSuper(Class) { var _cache = typeof Map === "function" ? new Map() : undefined; _wrapNativeSuper = function _wrapNativeSuper(Class) { if (Class === null || !_isNativeFunction(Class)) return Class; if (typeof Class !== "function") { throw new TypeError("Super expression must either be null or a function"); } if (typeof _cache !== "undefined") { if (_cache.has(Class)) return _cache.get(Class); _cache.set(Class, Wrapper); } function Wrapper() { return _construct(Class, arguments, _getPrototypeOf(this).constructor); } Wrapper.prototype = Object.create(Class.prototype, { constructor: { value: Wrapper, enumerable: false, writable: true, configurable: true } }); return _setPrototypeOf(Wrapper, Class); }; return _wrapNativeSuper(Class); }
-
-function isNativeReflectConstruct() { if (typeof Reflect === "undefined" || !Reflect.construct) return false; if (Reflect.construct.sham) return false; if (typeof Proxy === "function") return true; try { Date.prototype.toString.call(Reflect.construct(Date, [], function () {})); return true; } catch (e) { return false; } }
-
-function _construct(Parent, args, Class) { if (isNativeReflectConstruct()) { _construct = Reflect.construct; } else { _construct = function _construct(Parent, args, Class) { var a = [null]; a.push.apply(a, args); var Constructor = Function.bind.apply(Parent, a); var instance = new Constructor(); if (Class) _setPrototypeOf(instance, Class.prototype); return instance; }; } return _construct.apply(null, arguments); }
-
-function _isNativeFunction(fn) { return Function.toString.call(fn).indexOf("[native code]") !== -1; }
-
-function _setPrototypeOf(o, p) { _setPrototypeOf = Object.setPrototypeOf || function _setPrototypeOf(o, p) { o.__proto__ = p; return o; }; return _setPrototypeOf(o, p); }
-
-function _getPrototypeOf(o) { _getPrototypeOf = Object.setPrototypeOf ? Object.getPrototypeOf : function _getPrototypeOf(o) { return o.__proto__ || Object.getPrototypeOf(o); }; return _getPrototypeOf(o); }
-
-var element = function element(renderFn) {
-  return (
-    /*#__PURE__*/
-    function (_HTMLElement) {
-      _inherits(_class, _HTMLElement);
-
-      function _class() {
-        _classCallCheck(this, _class);
-
-        return _possibleConstructorReturn(this, _getPrototypeOf(_class).apply(this, arguments));
-      }
-
-      _createClass(_class, [{
-        key: "connectedCallback",
-        value: function connectedCallback() {
-          this.render();
-        }
-      }, {
-        key: "render",
-        value: function render() {
-          var result = (0, _hooksCore.renderWithHooks)(this, renderFn, this.render.bind(this));
-          (0, _litHtml.render)(result, this);
-        }
-      }]);
-
-      return _class;
-    }(_wrapNativeSuper(HTMLElement))
-  );
-};
-
-exports.element = element;
-},{"./wc-hooks/hooks-core":"src/wc-hooks/hooks-core.js","lit-html":"node_modules/lit-html/lit-html.js"}],"src/wc-hooks/use-state.js":[function(require,module,exports) {
+});
+exports.createContext = createContext;
+exports.component = component;
+const virtual = (0, _virtual.makeVirtual)(Container);
+exports.virtual = virtual;
+},{"lit-html":"node_modules/lit-html/lit-html.js","./core.js":"node_modules/haunted/lib/core.js","./virtual.js":"node_modules/haunted/lib/virtual.js"}],"node_modules/haunted/lib/haunted.js":[function(require,module,exports) {
 "use strict";
 
 Object.defineProperty(exports, "__esModule", {
   value: true
 });
-exports.useState = void 0;
+var _exportNames = {
+  html: true,
+  render: true,
+  component: true,
+  createContext: true,
+  virtual: true
+};
+Object.defineProperty(exports, "html", {
+  enumerable: true,
+  get: function () {
+    return _litHaunted.html;
+  }
+});
+Object.defineProperty(exports, "render", {
+  enumerable: true,
+  get: function () {
+    return _litHaunted.render;
+  }
+});
+Object.defineProperty(exports, "component", {
+  enumerable: true,
+  get: function () {
+    return _litHaunted.component;
+  }
+});
+Object.defineProperty(exports, "createContext", {
+  enumerable: true,
+  get: function () {
+    return _litHaunted.createContext;
+  }
+});
+Object.defineProperty(exports, "virtual", {
+  enumerable: true,
+  get: function () {
+    return _litHaunted.virtual;
+  }
+});
+Object.defineProperty(exports, "default", {
+  enumerable: true,
+  get: function () {
+    return _core.default;
+  }
+});
 
-var _hooksCore = require("./hooks-core");
+var _litHaunted = require("./lit-haunted.js");
+
+var _core = _interopRequireWildcard(require("./core.js"));
+
+Object.keys(_core).forEach(function (key) {
+  if (key === "default" || key === "__esModule") return;
+  if (Object.prototype.hasOwnProperty.call(_exportNames, key)) return;
+  Object.defineProperty(exports, key, {
+    enumerable: true,
+    get: function () {
+      return _core[key];
+    }
+  });
+});
+
+function _interopRequireWildcard(obj) { if (obj && obj.__esModule) { return obj; } else { var newObj = {}; if (obj != null) { for (var key in obj) { if (Object.prototype.hasOwnProperty.call(obj, key)) { var desc = Object.defineProperty && Object.getOwnPropertyDescriptor ? Object.getOwnPropertyDescriptor(obj, key) : {}; if (desc.get || desc.set) { Object.defineProperty(newObj, key, desc); } else { newObj[key] = obj[key]; } } } } newObj.default = obj; return newObj; } }
+},{"./lit-haunted.js":"node_modules/haunted/lib/lit-haunted.js","./core.js":"node_modules/haunted/lib/core.js"}],"src/components/name-input/index.js":[function(require,module,exports) {
+"use strict";
+
+var _haunted = require("haunted");
+
+function _templateObject() {
+  var data = _taggedTemplateLiteral(["\n        <style>\n            :host {\n                display: inline-block;\n                margin-bottom: 1em;\n            }\n            .father,\n            .mother {\n                position: relative;\n            }\n            .father {\n                margin-right: 11px;\n            }\n            .mother {\n                margin-left: 11px;\n            }\n            .father::after,\n            .mother::after {\n                content: '';\n                display: block;\n                width: 10px;\n                height: 30%;\n                position: absolute;\n                top: 70%;\n                border-top: 1px solid var(--color-border, #333);\n            }\n            .father::after {\n                right: -10px;\n            }\n            .mother::after {\n                left: -10px;\n            }\n            label {\n                display: block;\n            }\n        </style>\n        <section class=", ">\n            <label>", "</label>\n            <input\n                type=\"text\"\n                placeholder=", "\n                value=", "\n                @change=", "\n            />\n        </section>\n    "]);
+
+  _templateObject = function _templateObject() {
+    return data;
+  };
+
+  return data;
+}
+
+function _taggedTemplateLiteral(strings, raw) { if (!raw) { raw = strings.slice(0); } return Object.freeze(Object.defineProperties(strings, { raw: { value: Object.freeze(raw) } })); }
 
 function _slicedToArray(arr, i) { return _arrayWithHoles(arr) || _iterableToArrayLimit(arr, i) || _nonIterableRest(); }
 
@@ -2052,54 +2865,191 @@ function _iterableToArrayLimit(arr, i) { var _arr = []; var _n = true; var _d = 
 
 function _arrayWithHoles(arr) { if (Array.isArray(arr)) return arr; }
 
-var stateMap = new WeakMap();
+var NameInput = function NameInput(_ref) {
+  var name = _ref.name,
+      type = _ref.type;
 
-var updateState = function updateState(element, hookID, elementUpdateFn, newValue) {
-  var currentValue = stateMap.get(element).get(hookID);
+  var _useState = (0, _haunted.useState)(name),
+      _useState2 = _slicedToArray(_useState, 2),
+      dataName = _useState2[0],
+      setDataName = _useState2[1];
 
-  if (currentValue === newValue) {
-    return;
-  }
+  var _useState3 = (0, _haunted.useState)(type),
+      _useState4 = _slicedToArray(_useState3, 2),
+      dataType = _useState4[0],
+      setDataType = _useState4[1];
 
-  stateMap.get(element).set(hookID, newValue);
-
-  if (elementUpdateFn) {
-    elementUpdateFn();
-  }
-};
-/**
- * Prupose: Manage local state within a component
- * Example Usage:
- * ```
- * const [ state, setState ] = useState(initialValue);
- * ```
- */
-
-
-var useState = function useState(initialValue) {
-  var _registerHook = (0, _hooksCore.registerHook)("useState"),
-      _registerHook2 = _slicedToArray(_registerHook, 2),
-      element = _registerHook2[0],
-      hookID = _registerHook2[1];
-
-  var elementUpdateFn = (0, _hooksCore.getElementUpdateFn)(); //ensure map exists for this element
-
-  if (!stateMap.has(element)) {
-    stateMap.set(element, new Map());
-  } //if no entry for this hookID, store initialValue
-
-
-  if (!stateMap.get(element).has(hookID)) {
-    //get value from callback and store it
-    updateState(element, hookID, null, initialValue);
-  } //return value and a function to update the value
-
-
-  return [stateMap.get(element).get(hookID), updateState.bind(null, element, hookID, elementUpdateFn)];
+  return (0, _haunted.html)(_templateObject(), dataType, dataType, dataType === 'father' ? 'Adam' : 'Eve', dataName ? dataName : '', function (e) {
+    return setDataName(e.target.value);
+  });
 };
 
-exports.useState = useState;
-},{"./hooks-core":"src/wc-hooks/hooks-core.js"}],"node_modules/parcel-bundler/src/builtins/bundle-url.js":[function(require,module,exports) {
+customElements.define("ajb-name-input", (0, _haunted.component)(NameInput, {
+  observedAttributes: ['name', 'type']
+}));
+},{"haunted":"node_modules/haunted/lib/haunted.js"}],"src/components/expand-collapse/index.js":[function(require,module,exports) {
+"use strict";
+
+var _haunted = require("haunted");
+
+function _templateObject() {
+  var data = _taggedTemplateLiteral(["\n        <style>\n            :host {\n                display: inline-block;\n                margin-bottom: 1em;\n                width: 100%;\n            }\n            :host > section {\n                border-bottom: 1px solid #eee;\n            }\n            :host section .expandable-area {\n                max-height: 0px;\n                transition: max-height 0.3s ease-out;\n                overflow: hidden;\n            }\n            :host section.is-open .expandable-area {\n                max-height: 500px;\n                transition: max-height 0.4s ease-in;\n            }\n            :host a,\n            :host a i {\n                height: 20px;\n                width: 20px;\n                display: inline-block;\n            }\n            :host a i {\n                color: #333;\n            }\n\n            :host .title-bar  {\n                border-bottom: 1px solid #eee;\n            }\n            :host .title-bar h2 {\n                display: inline-block;\n            }\n        </style>\n        <section class=", ">\n            <div class=\"title-bar\">\n                <h2>", "</h2>\n                <button\n                    href=\"\"\n                    @click=", "\n                >\n                    <i class=", "></i>\n                    <span>", "</span>\n                </button>\n            </div>\n            <section class=\"expandable-area\">\n                <slot></slot>\n            </section>\n        </section>\n    "]);
+
+  _templateObject = function _templateObject() {
+    return data;
+  };
+
+  return data;
+}
+
+function _taggedTemplateLiteral(strings, raw) { if (!raw) { raw = strings.slice(0); } return Object.freeze(Object.defineProperties(strings, { raw: { value: Object.freeze(raw) } })); }
+
+function _slicedToArray(arr, i) { return _arrayWithHoles(arr) || _iterableToArrayLimit(arr, i) || _nonIterableRest(); }
+
+function _nonIterableRest() { throw new TypeError("Invalid attempt to destructure non-iterable instance"); }
+
+function _iterableToArrayLimit(arr, i) { var _arr = []; var _n = true; var _d = false; var _e = undefined; try { for (var _i = arr[Symbol.iterator](), _s; !(_n = (_s = _i.next()).done); _n = true) { _arr.push(_s.value); if (i && _arr.length === i) break; } } catch (err) { _d = true; _e = err; } finally { try { if (!_n && _i["return"] != null) _i["return"](); } finally { if (_d) throw _e; } } return _arr; }
+
+function _arrayWithHoles(arr) { if (Array.isArray(arr)) return arr; }
+
+var ExpandCollapse = function ExpandCollapse(_ref) {
+  var open = _ref.open,
+      customTitle = _ref.customTitle;
+
+  var _useState = (0, _haunted.useState)(open),
+      _useState2 = _slicedToArray(_useState, 2),
+      dataOpen = _useState2[0],
+      setDataOpen = _useState2[1];
+
+  var _useState3 = (0, _haunted.useState)(customTitle),
+      _useState4 = _slicedToArray(_useState3, 2),
+      dataTitle = _useState4[0],
+      setDataTitle = _useState4[1];
+
+  return (0, _haunted.html)(_templateObject(), dataOpen ? 'is-open' : '', dataTitle, function () {
+    return setDataOpen(!dataOpen);
+  }, dataOpen ? 'fas fa-angle-up' : 'fas fa-angle-down', dataOpen ? 'Collapse' : 'Expand');
+};
+
+customElements.define("ajb-expand-collapse", (0, _haunted.component)(ExpandCollapse, {
+  observedAttributes: ['open', 'custom-title']
+}));
+},{"haunted":"node_modules/haunted/lib/haunted.js"}],"src/components/timeline/index.js":[function(require,module,exports) {
+"use strict";
+
+var _haunted = require("haunted");
+
+function _templateObject3() {
+  var data = _taggedTemplateLiteral(["\n                        <span class=\"timeline-interval\">\n                            <img class=\"timeline-element-img\" src=", " alt=\"\" />\n                            <span class=\"timeline-divider\"></span>\n                            <span class=\"timeline-label\">", " ", "</span>\n                        </span>\n                    "]);
+
+  _templateObject3 = function _templateObject3() {
+    return data;
+  };
+
+  return data;
+}
+
+function _templateObject2() {
+  var data = _taggedTemplateLiteral(["\n                        <span class=\"timeline-interval\">\n                            <span class=\"timeline-divider\"></span>\n                            <span class=\"timeline-label\">", " ", "</span>\n                        </span>\n                    "]);
+
+  _templateObject2 = function _templateObject2() {
+    return data;
+  };
+
+  return data;
+}
+
+function _templateObject() {
+  var data = _taggedTemplateLiteral(["\n        <style>\n            :host {\n                position: relative;\n            }\n            :host {\n                display: inline-block;\n                margin-bottom: 1em;\n                width: 100%;\n            }\n            :host .timeline-baseline {\n                display: flex;\n                justify-content: space-evenly;\n                width: 100%;\n            }\n            :host .timeline-interval {\n                position: relative;\n                margin-top: 23px;\n            }\n            :host .timeline-divider {\n                display: inline-block;\n                height: 20px;\n                width: 1px;\n                background-color: #333;\n                position: absolute;\n                top: -130%;\n                left: 50%;\n            }\n            :host .timeline-element-img {\n                position: absolute;\n                top: -60px;\n                left: 15px;\n                height: 30px;\n                width: 30px;\n            }\n        </style>\n        <h3 class=\"timeline-title\">", "</h3>\n        <section class=\"timeline-baseline\">\n            ", "\n        </section>\n    "]);
+
+  _templateObject = function _templateObject() {
+    return data;
+  };
+
+  return data;
+}
+
+function _taggedTemplateLiteral(strings, raw) { if (!raw) { raw = strings.slice(0); } return Object.freeze(Object.defineProperties(strings, { raw: { value: Object.freeze(raw) } })); }
+
+function _slicedToArray(arr, i) { return _arrayWithHoles(arr) || _iterableToArrayLimit(arr, i) || _nonIterableRest(); }
+
+function _nonIterableRest() { throw new TypeError("Invalid attempt to destructure non-iterable instance"); }
+
+function _iterableToArrayLimit(arr, i) { var _arr = []; var _n = true; var _d = false; var _e = undefined; try { for (var _i = arr[Symbol.iterator](), _s; !(_n = (_s = _i.next()).done); _n = true) { _arr.push(_s.value); if (i && _arr.length === i) break; } } catch (err) { _d = true; _e = err; } finally { try { if (!_n && _i["return"] != null) _i["return"](); } finally { if (_d) throw _e; } } return _arr; }
+
+function _arrayWithHoles(arr) { if (Array.isArray(arr)) return arr; }
+
+var Timeline = function Timeline(_ref) {
+  var startDate = _ref.startDate,
+      endDate = _ref.endDate,
+      interval = _ref.interval,
+      timelineTitle = _ref.timelineTitle,
+      elements = _ref.elements;
+
+  // set the startDate for the timeline
+  var _useState = (0, _haunted.useState)(parseInt(startDate)),
+      _useState2 = _slicedToArray(_useState, 2),
+      dataStartDate = _useState2[0],
+      setDataStartDate = _useState2[1]; // set the endDate for the timeline
+
+
+  var _useState3 = (0, _haunted.useState)(parseInt(endDate)),
+      _useState4 = _slicedToArray(_useState3, 2),
+      dataEndDate = _useState4[0],
+      setDataEndDate = _useState4[1]; // set the interval of ticks on the timeline
+
+
+  var _useState5 = (0, _haunted.useState)(parseInt(interval)),
+      _useState6 = _slicedToArray(_useState5, 2),
+      dataInterval = _useState6[0],
+      setDataInterval = _useState6[1]; // set the title of the timeline
+
+
+  var _useState7 = (0, _haunted.useState)(timelineTitle),
+      _useState8 = _slicedToArray(_useState7, 2),
+      dataTitle = _useState8[0],
+      setDataTitle = _useState8[1]; // set the JS object of the the elements to show on the timeline
+
+
+  var _useState9 = (0, _haunted.useState)(elements),
+      _useState10 = _slicedToArray(_useState9, 2),
+      dataElements = _useState10[0],
+      setDataElements = _useState10[1];
+
+  var timelineArray = [];
+
+  var _loop = function _loop(i) {
+    var label = i < 0 ? 'B.C.' : 'A.D.';
+    var year = i < 0 ? Math.abs(i) : i;
+    var showLabel = i % dataInterval === 0;
+    var element = dataElements.filter(function (el) {
+      return el.location === year;
+    })[0];
+    timelineArray.push({
+      label: label,
+      year: year,
+      showLabel: showLabel,
+      element: element
+    });
+  };
+
+  for (var i = dataStartDate; i <= dataEndDate; i++) {
+    _loop(i);
+  }
+
+  return (0, _haunted.html)(_templateObject(), dataTitle, timelineArray.map(function (divider, idx) {
+    if (divider.showLabel) {
+      return (0, _haunted.html)(_templateObject2(), divider.year, divider.label);
+    } else if (divider.element && divider.element.location) {
+      return (0, _haunted.html)(_templateObject3(), divider.element.path, divider.year, divider.label);
+    }
+  }));
+};
+
+customElements.define("ajb-timeline", (0, _haunted.component)(Timeline, {
+  observedAttributes: ['start-date', 'end-date', 'interval', 'timeline-title', 'elements']
+}));
+},{"haunted":"node_modules/haunted/lib/haunted.js"}],"node_modules/parcel-bundler/src/builtins/bundle-url.js":[function(require,module,exports) {
 var bundleURL = null;
 
 function getBundleURLCached() {
@@ -2166,22 +3116,40 @@ function reloadCSS() {
 }
 
 module.exports = reloadCSS;
-},{"./bundle-url":"node_modules/parcel-bundler/src/builtins/bundle-url.js"}],"src/components/name-input/styles.scss":[function(require,module,exports) {
+},{"./bundle-url":"node_modules/parcel-bundler/src/builtins/bundle-url.js"}],"src/main.scss":[function(require,module,exports) {
 var reloadCSS = require('_css_loader');
 
 module.hot.dispose(reloadCSS);
 module.hot.accept(reloadCSS);
-},{"_css_loader":"node_modules/parcel-bundler/src/builtins/css-loader.js"}],"src/components/name-input/index.js":[function(require,module,exports) {
+},{"_css_loader":"node_modules/parcel-bundler/src/builtins/css-loader.js"}],"src/static/images/pyramids.jpg":[function(require,module,exports) {
+module.exports = "/pyramids.103b25fd.jpg";
+},{}],"src/static/images/noah-ark.png":[function(require,module,exports) {
+module.exports = "/noah-ark.f9caaea5.png";
+},{}],"src/static/images/towerOfBabel.jpg":[function(require,module,exports) {
+module.exports = "/towerOfBabel.132fdb05.jpg";
+},{}],"index.js":[function(require,module,exports) {
 "use strict";
 
-var _naiveElement = require("../../naive-element");
+var _haunted = require("haunted");
 
-var _useState3 = require("../../wc-hooks/use-state");
+require("./src/components/name-input");
 
-require("./styles.scss");
+require("./src/components/expand-collapse");
+
+require("./src/components/timeline");
+
+require("./src/main.scss");
+
+var _pyramids = _interopRequireDefault(require("./src/static/images/pyramids.jpg"));
+
+var _noahArk = _interopRequireDefault(require("./src/static/images/noah-ark.png"));
+
+var _towerOfBabel = _interopRequireDefault(require("./src/static/images/towerOfBabel.jpg"));
+
+function _interopRequireDefault(obj) { return obj && obj.__esModule ? obj : { default: obj }; }
 
 function _templateObject() {
-  var data = _taggedTemplateLiteral(["\n        <section>\n            <label>Father</label>\n            <input type=\"text\" value=\"", "\" @change=", "/>\n        </section>\n    "]);
+  var data = _taggedTemplateLiteral(["\n        <style>\n            .gen-couple {\n                display: inline-block;\n            }\n            aside {\n                position: absolute;\n                top: 5%;\n                right: 2%;\n                min-height: 300px;\n                width: 300px;\n                border: 1px solid #ccc;\n                padding: 1em;\n            }\n        </style>\n        <main id=\"main\">\n            <ajb-expand-collapse\n                open\n                custom-title=\"Traditional Timeline\"\n            >\n                <ajb-timeline\n                    start-date=\"-3000\"\n                    end-date=\"-1000\"\n                    interval=\"500\"\n                    timeline-title=\"Creation Scientists\"\n                    .elements=", "\n                ></ajb-timeline>\n                <p>Creation Scientist traditionally teach the pyramids were built at 2350 B.C. The Tower of Babel sometime after that and the Great Pyramids of Giza sometime after that.</p>\n                <p>Traditionally the flood was at 2350 B.C.</p>\n            </ajb-expand-collapse>\n\n            <ajb-expand-collapse\n                open\n                custom-title=\"Traditional Timeline\"\n            >\n                <ajb-timeline\n                    start-date=\"-3000\"\n                    end-date=\"-1000\"\n                    interval=\"500\"\n                    timeline-title=\"Egyptologists\"\n                    .elements=", "\n                ></ajb-timeline>\n                <p>Egyptologies traditionally teach the pyramids were built at 2550 B.C. 200 eyars before the traditional flood date of 2350 B.C.</p>\n                <p>How could the pyramids have been built 200 years before the flood, which was before the Tower of Babel incident? Which was before the nation of Egypt even existed?</p>\n            </ajb-expand-collapse>\n        </main>\n    "]);
 
   _templateObject = function _templateObject() {
     return data;
@@ -2199,36 +3167,6 @@ function _nonIterableRest() { throw new TypeError("Invalid attempt to destructur
 function _iterableToArrayLimit(arr, i) { var _arr = []; var _n = true; var _d = false; var _e = undefined; try { for (var _i = arr[Symbol.iterator](), _s; !(_n = (_s = _i.next()).done); _n = true) { _arr.push(_s.value); if (i && _arr.length === i) break; } } catch (err) { _d = true; _e = err; } finally { try { if (!_n && _i["return"] != null) _i["return"](); } finally { if (_d) throw _e; } } return _arr; }
 
 function _arrayWithHoles(arr) { if (Array.isArray(arr)) return arr; }
-
-var NameInput = function NameInput(props) {
-  var _useState = (0, _useState3.useState)(props.dataName),
-      _useState2 = _slicedToArray(_useState, 2),
-      name = _useState2[0],
-      setName = _useState2[1];
-
-  return (0, _naiveElement.html)(_templateObject(), name, function (e) {
-    return setName(e.target.value);
-  });
-};
-
-customElements.define("ajb-name-input", (0, _naiveElement.element)(NameInput, {
-  observedAttributes: ['data-name']
-}));
-},{"../../naive-element":"src/naive-element.js","../../wc-hooks/use-state":"src/wc-hooks/use-state.js","./styles.scss":"src/components/name-input/styles.scss"}],"src/main.scss":[function(require,module,exports) {
-var reloadCSS = require('_css_loader');
-
-module.hot.dispose(reloadCSS);
-module.hot.accept(reloadCSS);
-},{"_css_loader":"node_modules/parcel-bundler/src/builtins/css-loader.js"}],"index.js":[function(require,module,exports) {
-"use strict";
-
-var _naiveElement = require("./src/naive-element");
-
-require("./src/components/name-input");
-
-var _useState3 = require("./src/wc-hooks/use-state");
-
-require("./src/main.scss");
 
 function _toConsumableArray(arr) { return _arrayWithoutHoles(arr) || _iterableToArray(arr) || _nonIterableSpread(); }
 
@@ -2238,57 +3176,65 @@ function _iterableToArray(iter) { if (Symbol.iterator in Object(iter) || Object.
 
 function _arrayWithoutHoles(arr) { if (Array.isArray(arr)) { for (var i = 0, arr2 = new Array(arr.length); i < arr.length; i++) { arr2[i] = arr[i]; } return arr2; } }
 
-function _templateObject2() {
-  var data = _taggedTemplateLiteral(["\n                <ajb-name-input data-name=", "></ajb-name-input>\n                <ajb-name-input data-name=", "></ajb-name-input>\n            "]);
+var initialState = [{
+  father: '',
+  mother: ''
+}];
 
-  _templateObject2 = function _templateObject2() {
-    return data;
-  };
+var reducer = function reducer(state, action) {
+  switch (action) {
+    case 'addNew':
+      return [].concat(_toConsumableArray(state), [{
+        father: '',
+        mother: ''
+      }]);
 
-  return data;
-}
+    case 'remove':
+      state.pop();
+      return state;
 
-function _templateObject() {
-  var data = _taggedTemplateLiteral(["\n        ", "\n        <button @click=", ">\n            Add Generation\n        </button>\n    "]);
-
-  _templateObject = function _templateObject() {
-    return data;
-  };
-
-  return data;
-}
-
-function _taggedTemplateLiteral(strings, raw) { if (!raw) { raw = strings.slice(0); } return Object.freeze(Object.defineProperties(strings, { raw: { value: Object.freeze(raw) } })); }
-
-function _slicedToArray(arr, i) { return _arrayWithHoles(arr) || _iterableToArrayLimit(arr, i) || _nonIterableRest(); }
-
-function _nonIterableRest() { throw new TypeError("Invalid attempt to destructure non-iterable instance"); }
-
-function _iterableToArrayLimit(arr, i) { var _arr = []; var _n = true; var _d = false; var _e = undefined; try { for (var _i = arr[Symbol.iterator](), _s; !(_n = (_s = _i.next()).done); _n = true) { _arr.push(_s.value); if (i && _arr.length === i) break; } } catch (err) { _d = true; _e = err; } finally { try { if (!_n && _i["return"] != null) _i["return"](); } finally { if (_d) throw _e; } } return _arr; }
-
-function _arrayWithHoles(arr) { if (Array.isArray(arr)) return arr; }
-
-var App = function App() {
-  var _useState = (0, _useState3.useState)([{
-    father: 'Adam',
-    mother: 'Eve'
-  }]),
-      _useState2 = _slicedToArray(_useState, 2),
-      geneology = _useState2[0],
-      setGeneology = _useState2[1];
-
-  return (0, _naiveElement.html)(_templateObject(), geneology.map(function (generation) {
-    return (0, _naiveElement.html)(_templateObject2(), generation.father, generation.mother);
-  }), function () {
-    return setGeneology([].concat(_toConsumableArray(geneology), [{
-      father: '',
-      mother: ''
-    }]));
-  });
+    default:
+      throw new Error("what's going on?");
+  }
 };
 
-customElements.define("ajb-app", (0, _naiveElement.element)(App));
-},{"./src/naive-element":"src/naive-element.js","./src/components/name-input":"src/components/name-input/index.js","./src/wc-hooks/use-state":"src/wc-hooks/use-state.js","./src/main.scss":"src/main.scss"}],"node_modules/parcel-bundler/src/builtins/hmr-runtime.js":[function(require,module,exports) {
+var App = function App() {
+  var _useReducer = (0, _haunted.useReducer)(reducer, initialState),
+      _useReducer2 = _slicedToArray(_useReducer, 2),
+      geneology = _useReducer2[0],
+      dispatch = _useReducer2[1]; // CREATION SCIENTISTS TRADITITONAL
+
+
+  var TRAD_GIZA_PYRAMIDS = {
+    path: _pyramids.default,
+    location: 2150
+  };
+  var TRAD_TOWER_OF_BABEL = {
+    path: _towerOfBabel.default,
+    location: 2250
+  };
+  var TRAD_NOAH_ARK = {
+    path: _noahArk.default,
+    location: 2350 // EGYPTOLOGISTS
+
+  };
+  var EGYPT_GIZA_PYRAMIDS = {
+    path: _pyramids.default,
+    location: 2550
+  };
+  var EGYPT_TOWER_OF_BABEL = {
+    path: _towerOfBabel.default,
+    location: 2250
+  };
+  var EGYPT_NOAH_ARK = {
+    path: _noahArk.default,
+    location: 2350
+  };
+  return (0, _haunted.html)(_templateObject(), [TRAD_GIZA_PYRAMIDS, TRAD_TOWER_OF_BABEL, TRAD_NOAH_ARK], [EGYPT_GIZA_PYRAMIDS, EGYPT_TOWER_OF_BABEL, EGYPT_NOAH_ARK]);
+};
+
+customElements.define("ajb-app", (0, _haunted.component)(App));
+},{"haunted":"node_modules/haunted/lib/haunted.js","./src/components/name-input":"src/components/name-input/index.js","./src/components/expand-collapse":"src/components/expand-collapse/index.js","./src/components/timeline":"src/components/timeline/index.js","./src/main.scss":"src/main.scss","./src/static/images/pyramids.jpg":"src/static/images/pyramids.jpg","./src/static/images/noah-ark.png":"src/static/images/noah-ark.png","./src/static/images/towerOfBabel.jpg":"src/static/images/towerOfBabel.jpg"}],"node_modules/parcel-bundler/src/builtins/hmr-runtime.js":[function(require,module,exports) {
 var global = arguments[3];
 var OVERLAY_ID = '__parcel__error__overlay__';
 var OldModule = module.bundle.Module;
@@ -2316,7 +3262,7 @@ var parent = module.bundle.parent;
 if ((!parent || !parent.isParcelRequire) && typeof WebSocket !== 'undefined') {
   var hostname = "" || location.hostname;
   var protocol = location.protocol === 'https:' ? 'wss' : 'ws';
-  var ws = new WebSocket(protocol + '://' + hostname + ':' + "51032" + '/');
+  var ws = new WebSocket(protocol + '://' + hostname + ':' + "50471" + '/');
 
   ws.onmessage = function (event) {
     checkedAssets = {};
