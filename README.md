@@ -1,5 +1,5 @@
 # genealogy-tracker
-This is an experiment to use haunted and lit-html to create some custom elements. I first started witht the idea of trying to make a genealogy tree app... but quickly decided that I wanted to create a timeline tool for displaying custom timelines for Bible studies.
+This is an experiment to use [parcel](https://github.com/parcel-bundler/parcel), [haunted](https://github.com/matthewp/haunted), and [lit-html](https://github.com/Polymer/lit-html) to create some custom elements. I first started witht the idea of trying to make a genealogy tree app... but quickly decided that I wanted to create a timeline tool for displaying custom timelines for Bible studies.
 
 # How to Use
 define a few elements to put on your timeline:
