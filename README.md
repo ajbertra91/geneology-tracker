@@ -1,8 +1,8 @@
-# geneology-tracker
+# genealogy-tracker
+This is an experiment to use haunted and lit-html to create some custom elements. I first started witht the idea of trying to make a genealogy tree app... but quickly decided that I wanted to create a timeline tool for displaying custom timelines for Bible studies.
 
-More accurately this is a timeline custom element.
-
-define a few element to put on your timeline:
+# How to Use
+define a few elements to put on your timeline:
 ```javascript
 const GIZA_PYRAMIDS = {
     path: pyramidsImg,
@@ -31,3 +31,6 @@ const NOAH_ARK = {
     ]}
 ></ajb-timeline>
 ```
+
+## Outstanding Issue
+Right now the elements that you add to the timeline are including in the flexbox calculation and evenly distrubuted with the other timeline intervals.
